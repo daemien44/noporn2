@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bio-Evolution v3</title>
+    <style>
+        :root {
+            --bg: #191919;
+            --card: #252525;
+            --text: #ffffff;
+            --muted: #888;
+            --accent: #4caf50; /* Green */
+            --cyan: #00bcd4;    /* Science Blue */
+            --red: #ef5350;
+            --gold: #ffd700;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, sans-serif;
+            margin: 0;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* --- THE CARD --- */
+        .evolution-card {
+            background: var(--card);
+            border: 1px solid #333;
+            border-radius: 16px;
+            padding: 20px;
+            width: 100%;
+            max-width: 360px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+            transition: all 0.3s ease;
+        }
+
+        /* HEADER */
+        .level-tag {
+            background: #333; color: var(--gold); font-size: 10px; font-weight: 800;
+            text-transform: uppercase; letter-spacing: 1px; padding: 4px 12px;
+            border-radius: 20px; display: inline-block; margin-bottom: 8px;
+        }
+
+        .day-title { font-size: 22px; margin-bottom: 2px; font-weight: 700; letter-spacing: -0.5px; }
+        .day-small { font-size: 11px; color: var(--muted); margin-bottom: 15px; text-transform: uppercase; letter-spacing: 1px;}
+
+        /* PROGRESS BAR */
+        .progress-wrapper { position: relative; margin-bottom: 25px; }
+        .progress-bg { background: #333; height: 6px; width: 100%; border-radius: 3px; overflow: hidden; }
+        .progress-fill { height: 100%; background: var(--accent); width: 0%; transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
+        
+        /* 🧬 BIO-INTEL SECTION */
+        .bio-section {
+            background: rgba(0, 188, 212, 0.08); /* Cyan Tint */
+            border: 1px solid rgba(0, 188, 212, 0.2);
+            border-radius: 8px;
+            padding: 12px;
+            text-align: left;
+            margin-bottom: 15px;
+        }
+        .bio-header { color: var(--cyan); font-size: 10px; font-weight: 700; letter-spacing: 1px; margin-bottom: 6px; display: flex; align-items: center; gap: 5px; }
+        .bio-text { font-size: 12px; line-height: 1.4; color: #e0e0e0; }
+
+        /* QUOTE & RISK */
+        .quote-box {
+            border-left: 2px solid var(--red);
+            padding-left: 12px;
+            text-align: left;
+            margin-bottom: 20px;
+        }
+        .quote-risk { font-size: 11px; color: var(--red); font-weight: 600; margin-bottom: 4px; }
+        .quote-text { font-size: 12px; font-style: italic; color: var(--muted); line-height: 1.3; }
+
+        /* INVENTORY GRID */
+        .inv-header { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 8px; text-align: left; border-bottom: 1px solid #333; padding-bottom: 4px; }
+        .inv-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+        .inv-item { background: #2a2a2a; padding: 6px 10px; border-radius: 4px; font-size: 11px; display: flex; align-items: center; gap: 6px; color: #ccc;}
+        .inv-check { color: var(--accent); font-weight: bold; font-size: 10px; }
+
+        /* CONTROLS */
+        .demo-controls { margin-top: 20px; display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; width: 100%; max-width: 360px; }
+        .demo-btn { background: #333; border: 1px solid #444; color: #888; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 10px; }
+        .demo-btn:hover { background: #444; color: white; }
+        .load-real { border-color: var(--accent); color: var(--accent); font-weight: bold; }
+
+    </style>
+</head>
+<body>
+
+    <div class="evolution-card" id="card">
+        <div class="level-tag" id="levelTag">LEVEL 1</div>
+        <div class="day-title" id="dayTitle">Loading...</div>
+        <div class="day-small" id="dayNum">Day 0</div>
+
+        <div class="progress-wrapper">
+            <div class="progress-bg"><div class="progress-fill" id="progress"></div></div>
+        </div>
+
+        <div class="bio-section">
+            <div class="bio-header">🧬 BIOMETRICS</div>
+            <div class="bio-text" id="bioText">Analyzing...</div>
+        </div>
+
+        <div class="quote-box" id="quoteBox">
+            <div class="quote-risk" id="quoteRisk"></div>
+            <div class="quote-text" id="quoteText">...</div>
+        </div>
+
+        <div class="inv-header">Current Attributes</div>
+        <div class="inv-grid" id="invGrid">
+            </div>
+    </div>
+
+    <div class="demo-controls">
+        <button class="demo-btn" onclick="renderDay(1)">Day 1</button>
+        <button class="demo-btn" onclick="renderDay(3)">Day 3</button>
+        <button class="demo-btn" onclick="renderDay(7)">Day 7</button>
+        <button class="demo-btn" onclick="renderDay(14)">Day 14</button>
+        <button class="demo-btn" onclick="renderDay(30)">Day 30</button>
+        <button class="demo-btn load-real" onclick="loadRealData()">🔄 Sync Timer</button>
+    </div>
+
+<script>
+    // --- BIOLOGICAL DATABASE ---
+    const daysData = {
+        1: { 
+            title: "The Chemical Crash", 
+            bio: "Dopamine levels drop below baseline (homeostasis). Your brain is flooded with <b>DeltaFosB</b>, a protein that accumulates during addiction and triggers intense cravings.",
+            risk: "Risk: 'The Chaser Effect.' The neural pathways are still lit up, demanding immediate re-stimulation.",
+            quote: "The only way out is through.",
+            inventory: [ ["🧠", "Awareness"], ["📉", "Dopamine Low"] ]
+        },
+        2: { 
+            title: "Amygdala Hijack", 
+            bio: "Stress hormones (Cortisol/Epinephrine) spike. The Amygdala (fear center) screams that you are 'starving' of pleasure. Prefrontal Cortex activity is low.",
+            risk: "Risk: Your brain will fabricate logical reasons to relapse to lower the cortisol.",
+            quote: "Your brain is lying to you to get its fix.",
+            inventory: [ ["⚔️", "Resistance"], ["🔥", "Cortisol High"] ]
+        },
+        3: { 
+            title: "The Peak Urge", 
+            bio: "Withdrawal symptoms peak. Hypofrontality (low logic brain activity) is severe. Neural pruning hasn't started yet; pathways are still rigid.",
+            risk: "Risk: Statistically the highest relapse rate. This is the biological bottleneck.",
+            quote: "If you quit now, you will be back at Day 1 in 10 minutes.",
+            inventory: [ ["🛡️", "Willpower"], ["😡", "Aggression"] ]
+        },
+        5: { 
+            title: "Sensory Re-Calibration", 
+            bio: "Dopamine receptors (D2) remain downregulated, but the artificial super-stimulus is gone. Music and food may start to taste slightly better.",
+            risk: "Risk: Boredom. Your brain is used to high-speed inputs and finds normal life 'slow.'",
+            quote: "Boredom is not a signal to consume; it is a signal to create.",
+            inventory: [ ["🎨", "Motivation"], ["😴", "REM Sleep"] ]
+        },
+        7: { 
+            title: "Testosterone Spike", 
+            bio: "<b>Serum Testosterone peaks at 145.7% of baseline.</b> (Source: Jiang et al., 2003). Androgen receptors increase in sensitivity.",
+            risk: "Risk: High energy + High libido = Dangerous combination if not channeled into exercise.",
+            quote: "Do not waste this biological advantage on a pixel.",
+            inventory: [ ["💪", "Testosterone +45%"], ["⚡", "Max Energy"], ["👀", "Pheromones"] ]
+        },
+        10: { 
+            title: "Dopamine Resensitization", 
+            bio: "Prolactin levels (the 'satisfaction' hormone) normalize. D2 receptors begin slow upregulation, meaning you need less stimulus to feel okay.",
+            risk: "Risk: The 'I'm Cured' trap. One peek re-floods the DeltaFosB protein.",
+            quote: "Confidence is earned, not given.",
+            inventory: [ ["🏆", "Milestone 1"], ["🧠", "D2 Receptors"], ["👔", "Self-Image"] ]
+        },
+        14: { 
+            title: "The Flatline (Healing)", 
+            bio: "Your brain enters deep repair mode. Libido may drop to zero. This is the brain shutting down 'lust circuits' to repair gray matter.",
+            risk: "Risk: You will think your libido is broken and test it with porn. It's not broken; it's healing.",
+            quote: "Do not disturb the surgery while it is in progress.",
+            inventory: [ ["🔧", "Deep Repair"], ["📉", "Libido Drop"], ["🛡️", "Stoicism"] ]
+        },
+        21: { 
+            title: "Habit Formation", 
+            bio: "Neuroplasticity kicks in. The 'Porn Pathway' in the brain begins to weaken (Long-Term Depression of synapses) due to disuse.",
+            risk: "Risk: Triggers are weaker, but emotional stress can still reactivate old pathways.",
+            quote: "It gets easier. But you have to do it every day.",
+            inventory: [ ["🧠", "New Pathways"], ["🧘", "Focus"], ["⚡", "Social Energy"] ]
+        },
+        30: { 
+            title: "Gray Matter Recovery", 
+            bio: "Prefrontal Cortex (Logic/Willpower) shows measurable increases in gray matter density. Impulse control is physically stronger.",
+            risk: "Risk: Forgetting the pain of Day 1.",
+            quote: "You are no longer the same person who started.",
+            inventory: [ ["👑", "PFC Density"], ["🔓", "Potential"], ["👁️", "Clarity"] ]
+        },
+        90: { 
+            title: "Full Reboot", 
+            bio: "DeltaFosB accumulation has largely dissipated. Dopamine sensitivity is restored to factory settings. Executive function is fully online.",
+            risk: "Risk: None. You are free.",
+            quote: "Freedom.",
+            inventory: [ ["🦁", "The King"], ["🧠", "Rebooted"], ["🔥", "Life Force"] ]
+        },
+        // Fallback for in-between days
+        default: { 
+            title: "Neural Rewiring", 
+            bio: "Your brain is physically pruning connections that are no longer used. Every hour you resist, the 'Addiction Highway' gets more overgrown.",
+            risk: "Risk: Relapse reinforces the dying connections.",
+            quote: "Suffering is the currency of success.",
+            inventory: [ ["⚔️", "Discipline"], ["🧠", "Healing"], ["🛡️", "Resolve"] ]
+        }
+    };
+
+    // MUST MATCH THE KEY IN INDEX.HTML
+    const KEY_START = 'notion_reboot_start_v1';
+
+    function renderDay(day) {
+        // 1. Level Logic
+        let level = Math.ceil(day / 10);
+        if (day === 0) level = 1;
+        let progressVal = day % 10;
+        if (progressVal === 0 && day > 0) progressVal = 10;
+
+        // 2. Visual Updates
+        document.getElementById('levelTag').innerText = `LEVEL ${level}`;
+        document.getElementById('dayNum').innerText = `DAY ${day} / ${level * 10}`;
+        document.getElementById('progress').style.width = `${(progressVal / 10) * 100}%`;
+
+        // 3. Get Data
+        const data = daysData[day] || daysData.default;
+
+        // 4. Inject Content
+        document.getElementById('dayTitle').innerText = data.title;
+        document.getElementById('bioText').innerHTML = data.bio; // Uses innerHTML for bold tags
+        document.getElementById('quoteRisk').innerText = data.risk;
+        document.getElementById('quoteText').innerText = `"${data.quote}"`;
+
+        // 5. Build Inventory
+        const invGrid = document.getElementById('invGrid');
+        let invHtml = '';
+        data.inventory.forEach(item => {
+            invHtml += `
+            <div class="inv-item">
+                <span class="inv-icon">${item[0]}</span>
+                <span>${item[1]}</span>
+                <span class="inv-check">✓</span>
+            </div>`;
+        });
+        invGrid.innerHTML = invHtml;
+
+        // 6. Color Logic for Milestones
+        const card = document.getElementById('card');
+        const bioSection = document.querySelector('.bio-section');
+        
+        if (progressVal === 10 || day === 7 || day === 30 || day === 90) {
+            card.style.borderColor = "var(--gold)";
+            bioSection.style.borderColor = "var(--gold)";
+            bioSection.style.background = "rgba(255, 215, 0, 0.05)";
+            document.querySelector('.bio-header').style.color = "var(--gold)";
+        } else {
+            card.style.borderColor = "#333";
+            bioSection.style.borderColor = "rgba(0, 188, 212, 0.2)";
+            bioSection.style.background = "rgba(0, 188, 212, 0.08)";
+            document.querySelector('.bio-header').style.color = "var(--cyan)";
+        }
+    }
+
+    function loadRealData() {
+        const storedStart = localStorage.getItem(KEY_START);
+        if (!storedStart || isNaN(parseInt(storedStart))) {
+            renderDay(1);
+            return;
+        }
+        const diff = Date.now() - parseInt(storedStart);
+        let day = Math.floor(diff / (1000 * 60 * 60 * 24)) + 1;
+        if (day < 1) day = 1;
+        renderDay(day);
+    }
+
+    // Auto-load on start
+    loadRealData();
+
+</script>
+</body>
+</html>
