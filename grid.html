@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>30 Day Grid</title>
+    <style>
+        :root {
+            --bg: #191919;
+            --box-default: #2a2a2a;
+            --green: #4caf50;
+            --red: #ef5350;
+            --text: #888;
+        }
+
+        body {
+            background-color: var(--bg);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .header {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--text);
+            margin-bottom: 15px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(10, 1fr); /* 10 columns = 3 rows */
+            gap: 6px;
+            max-width: 320px;
+        }
+
+        .day-box {
+            width: 26px;
+            height: 26px;
+            background-color: var(--box-default);
+            border-radius: 4px;
+            cursor: default;
+            transition: transform 0.1s, background-color 0.3s;
+            position: relative;
+        }
+
+        .day-box:hover { transform: scale(1.1); z-index: 2; }
+
+        /* COLORS */
+        .clean { background-color: var(--green); box-shadow: 0 0 8px rgba(76, 175, 80, 0.3); }
+        .neutral { background-color: var(--box-default); }
+
+        /* TOOLTIP */
+        .day-box::after {
+            content: attr(data-date);
+            position: absolute;
+            bottom: 120%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #000;
+            color: #fff;
+            padding: 4px 8px;
+            font-size: 10px;
+            border-radius: 4px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+        }
+        .day-box:hover::after { opacity: 1; }
+
+        .demo-note {
+            margin-top: 20px;
+            font-size: 10px;
+            color: #444;
+            display: none;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="header">Last 30 Days</div>
+    <div class="grid-container" id="grid"></div>
+    <div class="demo-note" id="demoTag">Showing Sample Data</div>
+
+<script>
+    // --- CONFIG ---
+    // SET TO FALSE FOR REAL PRODUCTION USE
+    const USE_SAMPLE_DATA = false; 
+
+    // MUST MATCH THE KEY IN INDEX.HTML
+    const KEY_START = 'notion_reboot_start_v1'; 
+    const gridEl = document.getElementById('grid');
+
+    function init() {
+        const today = new Date();
+        
+        // 1. Get Start Time (Real or Sample)
+        let startTime = parseInt(localStorage.getItem(KEY_START) || 0);
+        
+        if (USE_SAMPLE_DATA) {
+            // Simulate starting 12 days ago
+            const d = new Date();
+            d.setDate(d.getDate() - 12); 
+            startTime = d.getTime();
+            document.getElementById('demoTag').style.display = 'block';
+        }
+
+        // 2. Generate Last 30 Days
+        for (let i = 29; i >= 0; i--) {
+            const date = new Date();
+            date.setDate(today.getDate() - i);
+            
+            // Format: "Oct 24"
+            const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            
+            // Determine Status
+            let status = 'neutral';
+            
+            // Logic: Compare dates at midnight to avoid time glitches
+            const boxDateStart = new Date(date).setHours(0,0,0,0);
+            
+            // If we have a valid start time...
+            if (startTime > 0) {
+                const userStartDate = new Date(startTime).setHours(0,0,0,0);
+                // If this box's date is equal to or after the start date, it is GREEN.
+                if (boxDateStart >= userStartDate) {
+                    status = 'clean';
+                }
+            }
+
+            // Create Element
+            const div = document.createElement('div');
+            div.className = `day-box ${status}`;
+            div.setAttribute('data-date', dateStr);
+            
+            // Add a white border for "Today" (the last box)
+            if (i === 0) div.style.border = "1px solid white";
+
+            gridEl.appendChild(div);
+        }
+    }
+
+    init();
+</script>
+</body>
+</html>
