@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Focus Timer</title>
+    <style>
+        :root {
+            --bg: #191919;
+            --text: #ffffff;
+            --muted: #888888;
+            --green: #4caf50;
+            --red: #ef5350;
+            --gold: #ffd700;
+            --card: #252525;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* --- LAYOUTS --- */
+        #setup-view, #timer-view {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.3s ease;
+        }
+
+        /* Hidden State */
+        .hidden {
+            display: none !important;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* --- START BUTTON --- */
+        .start-btn {
+            background: var(--green);
+            color: white;
+            border: none;
+            padding: 18px 40px;
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 10px 30px rgba(76, 175, 80, 0.3);
+            transition: transform 0.1s;
+        }
+        .start-btn:active { transform: scale(0.95); }
+
+        .subtitle {
+            margin-top: 20px;
+            color: var(--muted);
+            font-size: 13px;
+            max-width: 250px;
+            text-align: center;
+            line-height: 1.5;
+        }
+
+        /* --- TIMER DISPLAY --- */
+        .timer-val {
+            font-size: clamp(40px, 14vw, 70px);
+            font-weight: 800;
+            font-variant-numeric: tabular-nums;
+            line-height: 1;
+            margin-bottom: 5px;
+        }
+
+        .timer-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            color: var(--muted);
+            margin-bottom: 30px;
+        }
+
+        /* --- STATS CARD --- */
+        .stats-card {
+            background: var(--card);
+            padding: 10px 20px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+            border: 1px solid #333;
+        }
+        
+        .gold-text { color: var(--gold); font-weight: bold; }
+        .trophy { font-size: 16px; }
+
+        /* --- CONTROLS --- */
+        .controls {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn {
+            background: transparent;
+            border: 1px solid #444;
+            color: var(--muted);
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn:hover { border-color: #666; color: white; }
+        .btn-relapse { border-color: #552222; color: var(--red); }
+        .btn-relapse:hover { border-color: var(--red); background: rgba(239, 83, 80, 0.1); }
+
+        /* --- MODAL --- */
+        #modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85);
+            z-index: 100;
+            display: none;
+            align-items: center; justify-content: center;
+            backdrop-filter: blur(3px);
+        }
+        .modal-box {
+            background: #222; padding: 25px; border-radius: 16px;
+            width: 85%; max-width: 300px; text-align: center;
+            border: 1px solid #333; box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+        }
+        .modal-title { font-size: 18px; font-weight: 700; margin-bottom: 10px; }
+        .modal-text { font-size: 13px; color: var(--muted); margin-bottom: 20px; line-height: 1.4; }
+        .modal-actions { display: flex; gap: 10px; }
+        .m-btn { flex: 1; padding: 12px; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; }
+        .m-cancel { background: #333; color: white; }
+        .m-confirm { background: var(--red); color: white; }
+
+    </style>
+</head>
+<body>
+
+    <div id="setup-view">
+        <button class="start-btn" onclick="app.startFresh()">START TIMER</button>
+        <div class="subtitle">Click to begin tracking your progress.<br>Data is saved to this device.</div>
+    </div>
+
+    <div id="timer-view" class="hidden">
+        <div class="timer-val" id="display">00:00:00</div>
+        <div class="timer-label">Current Streak</div>
+
+        <div class="stats-card" id="best-card">
+            <span class="trophy">🏆</span>
+            <span id="best-display">Best: 0d 0h</span>
+        </div>
+
+        <div class="controls">
+            <button class="btn btn-relapse" onclick="ui.openModal()">I Relapsed</button>
+            <button class="btn" onclick="app.editTime()">Edit Time</button>
+        </div>
+    </div>
+
+    <div id="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-title">Reset Streak?</div>
+            <div class="modal-text">This will reset the timer to zero. If you beat your record, it will be saved.</div>
+            <div class="modal-actions">
+                <button class="m-btn m-cancel" onclick="ui.closeModal()">Cancel</button>
+                <button class="m-btn m-confirm" onclick="app.confirmRelapse()">Reset</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+    // NAMESPACE FOR ORGANIZATION
+    const app = {
+        keyStart: 'notion_reboot_start_v1', // PRE-FIXED KEY
+        keyBest: 'notion_reboot_best_v1',
+        startTime: null,
+        bestTime: 0,
+        interval: null,
+
+        init: function() {
+            // Load Data
+            const storedStart = localStorage.getItem(this.keyStart);
+            const storedBest = localStorage.getItem(this.keyBest);
+
+            if (storedBest) this.bestTime = parseInt(storedBest);
+
+            if (storedStart && !isNaN(parseInt(storedStart))) {
+                // DATA EXISTS -> SHOW TIMER
+                this.startTime = parseInt(storedStart);
+                ui.showTimer();
+                this.loop();
+            } else {
+                // NO DATA -> SHOW SETUP
+                ui.showSetup();
+            }
+            ui.updateBest(0);
+        },
+
+        startFresh: function() {
+            this.startTime = Date.now();
+            localStorage.setItem(this.keyStart, this.startTime);
+            ui.showTimer();
+            this.loop();
+        },
+
+        confirmRelapse: function() {
+            // Check High Score
+            const currentStreak = Date.now() - this.startTime;
+            if (currentStreak > this.bestTime) {
+                this.bestTime = currentStreak;
+                localStorage.setItem(this.keyBest, this.bestTime);
+            }
+
+            // Reset
+            this.startTime = Date.now();
+            localStorage.setItem(this.keyStart, this.startTime);
+            
+            ui.closeModal();
+            this.updateDisplay(); // Instant refresh
+        },
+
+        editTime: function() {
+            const days = prompt("Enter accurate days clean (e.g. 1.5):");
+            if (days && !isNaN(days)) {
+                const ms = parseFloat(days) * 24 * 60 * 60 * 1000;
+                this.startTime = Date.now() - ms;
+                localStorage.setItem(this.keyStart, this.startTime);
+                this.updateDisplay();
+            }
+        },
+
+        loop: function() {
+            if (this.interval) clearInterval(this.interval);
+            this.interval = setInterval(() => this.updateDisplay(), 1000);
+            this.updateDisplay();
+        },
+
+        updateDisplay: function() {
+            if (!this.startTime) return;
+            const diff = Date.now() - this.startTime;
+            
+            // Render Main Timer
+            document.getElementById('display').innerText = utils.formatTime(diff);
+            
+            // Render Best Score (Live update if beating)
+            ui.updateBest(diff);
+        }
+    };
+
+    const ui = {
+        showSetup: function() {
+            document.getElementById('setup-view').classList.remove('hidden');
+            document.getElementById('timer-view').classList.add('hidden');
+        },
+        showTimer: function() {
+            document.getElementById('setup-view').classList.add('hidden');
+            document.getElementById('timer-view').classList.remove('hidden');
+        },
+        openModal: function() {
+            document.getElementById('modal-overlay').style.display = 'flex';
+        },
+        closeModal: function() {
+            document.getElementById('modal-overlay').style.display = 'none';
+        },
+        updateBest: function(currentDiff) {
+            const displayEl = document.getElementById('best-display');
+            const cardEl = document.getElementById('best-card');
+            
+            // Logic: Show whichever is higher (Best vs Current)
+            const showTime = Math.max(app.bestTime, currentDiff);
+            
+            if (currentDiff > app.bestTime && app.bestTime > 0) {
+                displayEl.innerHTML = utils.formatShort(currentDiff) + " <span class='gold-text'>(New Record!)</span>";
+                cardEl.style.borderColor = "var(--gold)";
+            } else {
+                displayEl.innerHTML = "Best: " + utils.formatShort(showTime);
+                cardEl.style.borderColor = "#333";
+            }
+        }
+    };
+
+    const utils = {
+        formatTime: function(ms) {
+            if (ms < 0) ms = 0;
+            const s = Math.floor((ms / 1000) % 60);
+            const m = Math.floor((ms / (1000 * 60)) % 60);
+            const h = Math.floor((ms / (1000 * 60 * 60)) % 24);
+            const d = Math.floor(ms / (1000 * 60 * 60 * 24));
+            
+            const p = (n) => n.toString().padStart(2, '0');
+            
+            if (d > 0) return `${d}d ${p(h)}:${p(m)}:${p(s)}`;
+            return `${p(h)}:${p(m)}:${p(s)}`;
+        },
+        formatShort: function(ms) {
+            if (ms <= 0) return "0d 0h";
+            const d = Math.floor(ms / (1000 * 60 * 60 * 24));
+            const h = Math.floor((ms / (1000 * 60 * 60)) % 24);
+            const m = Math.floor((ms / (1000 * 60)) % 60);
+            
+            if (d > 0) return `${d}d ${h}h`;
+            if (h > 0) return `${h}h ${m}m`;
+            return `${m}m`;
+        }
+    };
+
+    // BOOT
+    app.init();
+
+</script>
+</body>
+</html>
